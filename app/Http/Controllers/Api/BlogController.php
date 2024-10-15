@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Blog;
 use App\Http\Resources\BlogResource;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class BlogController extends Controller
 {
@@ -78,7 +79,36 @@ class BlogController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $validator = Validator::make($request->all(), [
+            'title'     => 'required',
+            'content'   => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $blog = Blog::findOrFail($id);
+
+        if ($request->hasFile('image')) {
+
+            $image = $request->file('image');
+            $image->storeAs('public/posts', $image->hashName());
+
+            Storage::delete('public/posts/' . basename($blog->image));
+
+            $blog->update([
+                'image'     => $image->hashName(),
+                'title'     => $request->title,
+                'content'   => $request->input('content'),
+            ]);
+        } else {
+            $blog->update([
+                'title'     => $request->title,
+                'content'   => $request->input('content'),
+            ]);
+        }
+        return new BlogResource(true, 'Data Blog Berhasil Diubah!', $blog);
     }
 
     /**
@@ -86,6 +116,10 @@ class BlogController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $blog = Blog::findOrFail($id);
+        Storage::delete('public/posts/' . basename($blog->image));
+
+        $blog->delete();
+        return new BlogResource(true, 'Data Blog Berhasil Dihapus!', null);
     }
 }
