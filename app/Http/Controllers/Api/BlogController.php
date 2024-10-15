@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Blog;
 use App\Http\Resources\BlogResource;
+use Illuminate\Support\Facades\Validator;
 
 class BlogController extends Controller
 {
@@ -32,7 +33,26 @@ class BlogController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validator = Validator::make($request->all(), [
+            'title'   => 'required',
+            'content' => 'required',
+            'image'   => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $image = $request->file('image');
+        $image->storeAs('public/posts', $image->hashName());
+
+        $blog = Blog::create([
+            'title'     => $request->title,
+            'content'   => $request->input('content'),
+            'image'     => $image->hashName(),
+        ]);
+
+        return new BlogResource(true, 'Data Blog Berhasil Disimpan', $blog);
     }
 
     /**
@@ -40,7 +60,9 @@ class BlogController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $blog = Blog::findOrFail($id);
+
+        return new BlogResource(true, 'Detail Data Blog', $blog);
     }
 
     /**
